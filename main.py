@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from sklearn import tree
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, ConfusionMatrixDisplay)
 
@@ -28,7 +28,23 @@ else:
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, train_size=0.8, random_state=3)
 
 # Create and train the model
-clf = RandomForestClassifier(random_state=3)
+clf = RandomForestClassifier(n_jobs=-1, random_state=3)
+clf.fit(X_train, y_train.values.ravel())
+
+# Hyperparameter tuning
+# TODO: Adjust the hyperparameter search space
+params = {'n_estimators': [10, 50, 100, 200, 500],
+          'criterion': ['gini', 'entropy', 'log_loss'],
+          'max_depth': [None, 10, 20, 50, 100],
+          'min_samples_split': [2, 5, 10],
+          'min_samples_leaf': [1, 2, 4],
+          'max_features': ['sqrt', 'log2', None],
+          'max_leaf_nodes': [None, 10, 20, 50, 100],
+          'bootstrap': [True, False],
+          'class_weight': ['balanced', 'balanced_subsample', None]}
+clf_tuned = RandomizedSearchCV(clf, params, n_jobs=-1, random_state=3)
+clf_tuned.fit(X_train, y_train.values.ravel())
+clf.set_params(**clf_tuned.best_params_)
 clf.fit(X_train, y_train.values.ravel())
 
 # Evaluate the model
