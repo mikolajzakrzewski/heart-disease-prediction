@@ -1,11 +1,14 @@
 # Description: This script trains a random forest classifier on the dataset and evaluates its performance.
+import os
+import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from sklearn import tree
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, ConfusionMatrixDisplay)
+from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, classification_report,
+                             ConfusionMatrixDisplay)
 
 # Prepare training and testing dataframes
 X = pd.read_csv('dataset/features.csv', index_col=0)
@@ -28,24 +31,24 @@ else:
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, train_size=0.8, random_state=3)
 
 # Create and train the model
-clf = RandomForestClassifier(n_jobs=-1, random_state=3)
+clf = RandomForestClassifier(class_weight='balanced_subsample', n_jobs=-1, random_state=3)
 clf.fit(X_train, y_train.values.ravel())
 
 # Hyperparameter tuning
-# TODO: Adjust the hyperparameter search space
 params = {'n_estimators': [10, 50, 100, 200, 500],
-          'criterion': ['gini', 'entropy', 'log_loss'],
           'max_depth': [None, 10, 20, 50, 100],
-          'min_samples_split': [2, 5, 10],
-          'min_samples_leaf': [1, 2, 4],
+          'min_samples_split': [2, 5, 10, 20],
+          'min_samples_leaf': [1, 2, 5, 10],
           'max_features': ['sqrt', 'log2', None],
-          'max_leaf_nodes': [None, 10, 20, 50, 100],
-          'bootstrap': [True, False],
-          'class_weight': ['balanced', 'balanced_subsample', None]}
+          'max_leaf_nodes': [None, 10, 20, 50, 100]}
 clf_tuned = RandomizedSearchCV(clf, params, n_jobs=-1, random_state=3)
 clf_tuned.fit(X_train, y_train.values.ravel())
 clf.set_params(**clf_tuned.best_params_)
 clf.fit(X_train, y_train.values.ravel())
+
+# Make a directory to store various reports and statistics
+if not os.path.exists('reports'):
+    os.mkdir('reports')
 
 # Evaluate the model
 y_true = y_test.values.ravel()
@@ -54,14 +57,17 @@ accuracy = accuracy_score(y_true, y_pred)
 precision = precision_score(y_true, y_pred, average='weighted', zero_division=0.0)
 recall = recall_score(y_true, y_pred, average='weighted', zero_division=0.0)
 f1 = f1_score(y_true, y_pred, average='weighted', zero_division=0.0)
+report = classification_report(y_true, y_pred, target_names=dl, zero_division=0.0, output_dict=True)
+report_df = pd.DataFrame(report).transpose()
+report_df.to_csv('reports/classification_report.csv')
 
-# Display the confusion matrix
+# Save the confusion matrix to a file
 stats = f'Accuracy: {accuracy}\nPrecision: {precision}\nRecall: {recall}\nF1: {f1}'
 rcParams.update({'figure.autolayout': True})
 disp = ConfusionMatrixDisplay.from_estimator(clf, X_test, y_test, display_labels=dl, cmap='Reds', colorbar=False)
 disp.ax_.set_title('Confusion Matrix')
 disp.ax_.set_xlabel(disp.ax_.get_xlabel() + '\n\n' + stats)
-plt.show()
+plt.savefig('reports/confusion_matrix.png')
 
 # Extract feature names and class names
 fn = X.columns
@@ -69,8 +75,26 @@ cn = y[y.columns[0]].unique()
 cn.sort()
 cn = cn.astype(str)
 
-# Visualize the first two tree levels
-plt.figure(figsize=(10, 5), dpi=200)
-tree.plot_tree(clf.estimators_[0], max_depth=2, filled=True, feature_names=fn, class_names=cn,
-               rounded=True, fontsize=8)
-plt.show()
+# Save trees' text representations to files
+if os.path.exists('reports/trees'):
+    for file in os.listdir('reports/trees'):
+        os.remove(f'reports/trees/{file}')
+
+else:
+    os.mkdir('reports/trees')
+
+for i, estimator in enumerate(clf.estimators_):
+    with open(f'reports/trees/tree_{i + 1}', 'w') as f:
+        f.write(tree.export_text(estimator, feature_names=fn, class_names=dl))
+
+# Save the model to a file
+with open('reports/model.pkl', 'wb') as f:
+    pickle.dump(clf, f)
+
+# Save additional model info to a file
+with open('reports/model_info.pkl', 'wb') as f:
+    pickle.dump(X_train, f)
+    pickle.dump(y_train, f)
+    pickle.dump(fn, f)
+    pickle.dump(cn, f)
+    pickle.dump(dl, f)
