@@ -1,4 +1,4 @@
-# Description: This script trains a random forest classifier on the dataset and evaluates its performance.
+# Description: This script trains a random forest classifier on the dataset and tunes its hyperparameters
 import os
 import pickle
 import pandas as pd
@@ -28,10 +28,10 @@ else:
     dl = ['Absence', 'Mild', 'Moderate', 'Severe', 'Critical']
 
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, train_size=0.8, random_state=3)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, train_size=0.8)
 
 # Create and train the model
-clf = RandomForestClassifier(class_weight='balanced_subsample', n_jobs=-1, random_state=3)
+clf = RandomForestClassifier(class_weight='balanced_subsample', n_jobs=-1)
 clf.fit(X_train, y_train.values.ravel())
 
 # Hyperparameter tuning
@@ -41,7 +41,7 @@ params = {'n_estimators': [10, 50, 100, 200, 500],
           'min_samples_leaf': [1, 2, 5, 10],
           'max_features': ['sqrt', 'log2', None],
           'max_leaf_nodes': [None, 10, 20, 50, 100]}
-clf_tuned = RandomizedSearchCV(clf, params, n_jobs=-1, random_state=3)
+clf_tuned = RandomizedSearchCV(clf, params, n_jobs=-1, scoring='f1_weighted')
 clf_tuned.fit(X_train, y_train.values.ravel())
 clf.set_params(**clf_tuned.best_params_)
 clf.fit(X_train, y_train.values.ravel())
@@ -49,6 +49,10 @@ clf.fit(X_train, y_train.values.ravel())
 # Make a directory to store various reports and statistics
 if not os.path.exists('reports'):
     os.mkdir('reports')
+
+# Save tuning results to a file
+cv_results_df = pd.DataFrame(clf_tuned.cv_results_)
+cv_results_df.to_csv('reports/cv_results.csv')
 
 # Evaluate the model
 y_true = y_test.values.ravel()
@@ -92,9 +96,15 @@ with open('reports/model.pkl', 'wb') as f:
     pickle.dump(clf, f)
 
 # Save additional model info to a file
-with open('reports/model_info.pkl', 'wb') as f:
+with open('reports/train_data.pkl', 'wb') as f:
     pickle.dump(X_train, f)
     pickle.dump(y_train, f)
+
+with open('reports/test_data.pkl', 'wb') as f:
+    pickle.dump(X_test, f)
+    pickle.dump(y_test, f)
+
+with open('reports/feature_data.pkl', 'wb') as f:
     pickle.dump(fn, f)
     pickle.dump(cn, f)
     pickle.dump(dl, f)
