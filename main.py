@@ -1,6 +1,8 @@
 # Description: This script trains a random forest classifier on the dataset and tunes its hyperparameters
+import sys
 import os
 import pickle
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -18,7 +20,10 @@ y = pd.read_csv('dataset/targets.csv', index_col=0)
 X = X.fillna(X.mean())
 
 # Ask the user if they want to omit the severity of the disease
-omit_severity = input('Omit the severity of the disease? (y/_): ')
+if len(sys.argv) > 1:
+    omit_severity = sys.argv[1]
+else:
+    omit_severity = input('Omit the severity of the disease? (y/n): ')
 if omit_severity == 'y':
     # Omit the severity of the disease by replacing target values 2, 3, and 4 with 1
     y = y.replace([2, 3, 4], 1)
@@ -91,11 +96,10 @@ for i, estimator in enumerate(clf.estimators_):
     with open(f'reports/trees/tree_{i + 1}', 'w') as f:
         f.write(tree.export_text(estimator, feature_names=fn, class_names=dl))
 
-# Save the model to a file
+# Save various generated data to files for further work
 with open('reports/model.pkl', 'wb') as f:
     pickle.dump(clf, f)
 
-# Save additional model info to a file
 with open('reports/train_data.pkl', 'wb') as f:
     pickle.dump(X_train, f)
     pickle.dump(y_train, f)
