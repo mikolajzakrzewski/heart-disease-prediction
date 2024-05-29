@@ -4,13 +4,16 @@ import os
 import pickle
 
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
+
 from matplotlib import rcParams
 from sklearn import tree
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score, classification_report,
                              ConfusionMatrixDisplay)
+from sklearn.inspection import permutation_importance
 
 # Prepare training and testing dataframes
 X = pd.read_csv('dataset/features.csv', index_col=0)
@@ -77,12 +80,41 @@ disp = ConfusionMatrixDisplay.from_estimator(clf, X_test, y_test, display_labels
 disp.ax_.set_title('Confusion Matrix')
 disp.ax_.set_xlabel(disp.ax_.get_xlabel() + '\n\n' + stats)
 plt.savefig('reports/confusion_matrix.png')
+plt.clf()
 
 # Extract feature names and class names
 fn = X.columns
 cn = y[y.columns[0]].unique()
 cn.sort()
 cn = cn.astype(str)
+
+# Save feature importance plots to files
+plt.figure(figsize=(6, 6))
+
+fi = pd.Series(clf.feature_importances_, index=fn)
+fi = fi.sort_values(ascending=False)
+sns.reset_defaults()
+sns.set_style('darkgrid', {'patch.edgecolor':"black", 'patch.linewidth':0.5})
+sns.set_context('talk')
+plot = sns.barplot(x=fi.values, y=fi.index, hue=fi.index, palette='Reds_r', color='red')
+plot.set_title('Impurity-based feature importance')
+plot.set_xlabel('Mean impurity decrease')
+plot.set_ylabel('Feature')
+plt.savefig('reports/impurity_feature_importance.png')
+plt.clf()
+
+pi = permutation_importance(clf, X_test, y_test, n_repeats=10, scoring='f1_weighted')
+fi = pd.Series(pi.importances_mean, index=fn)
+fi = fi.sort_values(ascending=False)
+sns.reset_defaults()
+sns.set_style('darkgrid', {'patch.edgecolor':"black", 'patch.linewidth':0.5})
+sns.set_context('talk')
+plot = sns.barplot(x=fi.values, y=fi.index, hue=fi.index, palette='Reds_r')
+plot.set_title('Permutation-based feature importance')
+plot.set_xlabel('Mean accuracy decrease')
+plot.set_ylabel('Feature')
+plt.savefig('reports/permutation_feature_importance.png')
+plt.clf()
 
 # Save trees' text representations to files
 if os.path.exists('reports/trees'):
