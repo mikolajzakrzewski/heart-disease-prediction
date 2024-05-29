@@ -1,7 +1,9 @@
 ### Project Specific
 
 # Reports and statistics
-reports/
+evaluation/
+model/
+visualization/
 
 ### OS X
 
