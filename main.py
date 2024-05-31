@@ -1,5 +1,4 @@
 # Description: This script trains a random forest classifier on the dataset and tunes its hyperparameters
-import sys
 import os
 import pickle
 
@@ -16,18 +15,8 @@ y = pd.read_csv('dataset/targets.csv', index_col=0)
 # Deal with missing values
 X = X.fillna(X.mean())
 
-# Ask the user if they want to omit the severity of the disease
-if len(sys.argv) > 1:
-    omit_severity = sys.argv[1]
-else:
-    omit_severity = input('Omit the severity of the disease? (y/n): ')
-if omit_severity == 'y':
-    # Omit the severity of the disease by replacing target values 2, 3, and 4 with 1
-    y = y.replace([2, 3, 4], 1)
-    dl = ['Absence', 'Presence']
-else:
-    # Retain the severity of the disease
-    dl = ['Absence', 'Mild', 'Moderate', 'Severe', 'Critical']
+# Omit the severity of the disease by replacing target values 2, 3, and 4 with 1
+y = y.replace([2, 3, 4], 1)
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, train_size=0.8)
@@ -56,11 +45,12 @@ if not os.path.exists('model'):
 cv_results_df = pd.DataFrame(clf_tuned.cv_results_)
 cv_results_df.to_csv('model/cv_results.csv')
 
-# Extract feature names and class names
+# Extract feature names, class names and class labels
 fn = X.columns
 cn = y[y.columns[0]].unique()
 cn.sort()
 cn = cn.astype(str)
+dl = ['Absence', 'Presence']
 
 # Save trees' text representations to files
 if os.path.exists('model/trees'):

@@ -7,7 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from matplotlib import rcParams
-from sklearn.metrics import classification_report, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay, RocCurveDisplay
 from sklearn.inspection import permutation_importance
 
 # Load the model data
@@ -72,4 +72,18 @@ plot.set_title('Permutation-based feature importance')
 plot.set_xlabel('Mean accuracy decrease')
 plot.set_ylabel('Feature')
 plt.savefig('evaluation/permutation_feature_importance.png')
+plt.clf()
+
+# Save the ROC curve and AUC plot to a file
+sns.reset_defaults()
+rcParams.update({'figure.autolayout': True})
+sns.set_style('darkgrid')
+sns.set_context('talk')
+disp = RocCurveDisplay.from_estimator(clf, X_test, y_test, name='ROC curve', plot_chance_level=True)
+disp.ax_.set_title('ROC curve and AUC')
+disp.ax_.set_xlabel('False positive rate')
+disp.ax_.set_ylabel('True positive rate')
+disp.line_.set_color('red')
+disp.ax_.legend(fontsize='x-small')
+plt.savefig('evaluation/roc_curve_and_auc.png')
 plt.clf()
